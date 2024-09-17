@@ -122,7 +122,7 @@ esp_err_t init_camera(void) {
 }
 
 void init_opencv_orb();
-void orb_features2d(uint8_t* data, int width, int height);
+void orb_features2d(uint8_t* data, int width, int height, int* descriptor, int* desc_size);
 
 // Save image to SPIFFS
 esp_err_t save_image_to_spiffs(camera_fb_t *fb) {
@@ -143,6 +143,26 @@ esp_err_t save_image_to_spiffs(camera_fb_t *fb) {
     return ESP_OK;
 }
 
+esp_err_t save_descriptor_to_spiffs(int* descriptor, int desc_size){ 
+    FILE* file = fopen("/spiffs/descriptor.bin", "wb");
+    if(!file){ 
+        ESP_LOGE(TAG, "Failed to open file for writing descriptor");
+        return ESP_FAIL;
+    }
+    size_t written = fwrite(descriptor, sizeof(int), desc_size, file);
+    if(written != desc_size){ 
+        ESP_LOGE(TAG, "Failed to write file");
+        fclose(file);
+        return ESP_FAIL;
+    }
+    ESP_LOGI(TAG, "Descriptor written to SPIFFS, size: %d integers", desc_size);
+
+    // Close the file
+    fclose(file);
+
+    return ESP_OK;
+}
+
 esp_err_t camera_capture() {
     // Acquire a frame
     camera_fb_t *fb = esp_camera_fb_get();
@@ -152,15 +172,22 @@ esp_err_t camera_capture() {
     }
 
     // Test Features extraction
-    orb_features2d(fb->buf, fb->width, fb->height);  
+    int descriptor[500];
+    int desc_size = 0;
+    orb_features2d(fb->buf, fb->width, fb->height, descriptor, &desc_size);  
 
     // Save the image to SPIFFS
     save_image_to_spiffs(fb);
+
+    save_descriptor_to_spiffs(descriptor, desc_size);
+    // ESP_LOGI("TEST", "Descriptor: ");
+    // printf("%p",descriptor);
 
     // Return frame buffer to free memory
     esp_camera_fb_return(fb);
     return ESP_OK;
 }
+
 
 void app_main(void) {
     printf("Init\n");

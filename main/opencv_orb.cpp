@@ -33,7 +33,7 @@ long int sysconf(int wtf){
 }
 
 extern "C" void init_opencv_orb();
-extern "C" void orb_features2d(uint8_t* data, int width, int height);
+extern "C" void orb_features2d(uint8_t* data, int width, int height, int* descriptor, int* desc_size);
 // extern "C" void orb_resize(uint8_t* data, int width, int height);
 
 cv::Ptr<cv::ORB> orb_detector;
@@ -54,14 +54,33 @@ void init_opencv_orb(){
 
 
 
-void orb_features2d(uint8_t* data, int width, int height){ 
+void orb_features2d(uint8_t* data, int width, int height, int* descriptor, int* desc_size){ 
     cv::Mat rawdata( height, width, CV_8UC1, (void*) data);
 
     // orb_detector -> detect(rawdata, mvkeys);
     mvkeys.push_back(cv::KeyPoint(50, 50, 20));
     orb_detector -> compute(rawdata, mvkeys, feature_extract);
 
+    int num_elements = feature_extract.total();
+    *desc_size = num_elements;
+
+    for(int i = 0; i < num_elements; ++i ){ 
+        descriptor[i] = static_cast<int>(feature_extract.at<uint8_t>(i));
+
+    }
+
+
+
     printf("For picture: mvKeys.size = %i\n", mvkeys.size());
     std::cout << "Feature Extraction: \n" << feature_extract << std::endl;
+
+    std::cout << "Feature Extraction (as int array): \n";
+
+    for (int i = 0; i < num_elements; i++) {
+        std::cout << descriptor[i] << " ";
+    }
+    std::cout << std::endl;
+    
+    // return feature_extract;
 
 }
